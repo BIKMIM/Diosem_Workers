@@ -124,6 +124,19 @@
             padding-bottom: 5px;
         }
 
+        .no-assignment-list-container {
+            display: flex;
+            align-items: flex-start; /* '남는인원: ' 텍스트와 목록을 같은 줄에 정렬 */
+            flex-wrap: wrap;
+        }
+
+        .no-assignment-label {
+            font-weight: bold;
+            color: #555;
+            margin-right: 8px;
+            white-space: nowrap; /* "남는인원:" 줄바꿈 방지 */
+        }
+
         .no-assignment-list {
             list-style: none;
             padding: 0;
@@ -142,10 +155,11 @@
             white-space: nowrap; /* 줄바꿈 방지 */
         }
 
-        .no-assignment-list li:before {
+        /* 원래 있던 • 제거 */
+        /* .no-assignment-list li:before {
             content: '• ';
             color: #007bff;
-        }
+        } */
 
         .empty-message {
             color: #6c757d;
@@ -154,6 +168,13 @@
             padding: 10px;
             background-color: #f0f0f0;
             border-radius: 8px;
+        }
+
+        .version {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.85em;
+            color: #777;
         }
 
         /* 반응형 디자인 */
@@ -175,6 +196,13 @@
                 font-size: 0.85em;
                 padding: 6px 10px;
             }
+            .no-assignment-list-container {
+                flex-direction: column; /* 작은 화면에서는 "남는인원:" 과 목록을 세로로 정렬 */
+                align-items: flex-start;
+            }
+            .no-assignment-label {
+                margin-bottom: 5px; /* 세로 정렬 시 간격 추가 */
+            }
         }
     </style>
 </head>
@@ -188,6 +216,7 @@
         <div id="results" class="result-section" style="display:none;">
             <h2>일별 미배정 직원</h2>
             </div>
+        <div class="version">Version: 1.1</div>
     </div>
 
     <script>
@@ -217,10 +246,9 @@
             const allDailyUnassigned = {}; // 날짜별 미배정 직원 저장
 
             // 정규표현식을 사용하여 날짜와 직원을 추출
-            // 날짜 패턴: <6월 9일 월요일> 또는 <날짜 요일>
             const datePattern = /<(\d{1,2}월\s*\d{1,2}일\s*[가-힣]{1}요일)>/;
-            // 직원 이름 패턴: 한글 두 글자 이상 (공백 포함 가능)
-            const workerNamePattern = /[가-힣]{2,}/g;
+            // 직원 이름 패턴: 한글 두 글자 이상 (공백 포함 가능) - 보다 유연하게 '님' 같은 접미사도 고려하지 않도록
+            const workerNamePattern = /[가-힣]{2,3}/g; // 2~3글자 한글 이름 (일반적인 이름 길이)
 
             lines.forEach(line => {
                 line = line.trim();
@@ -233,21 +261,18 @@
                 const dateMatch = line.match(datePattern);
                 if (dateMatch) {
                     // 새 날짜 시작: 이전 날짜의 미배정 직원 계산 및 저장
-                    if (currentDate && dailyAssignedWorkers.size > 0) {
+                    if (currentDate) { // currentDate가 비어있지 않은 경우에만 처리
                         const unassigned = getUnassignedWorkers(dailyAssignedWorkers);
-                        allDailyUnassigned[currentDate] = unassigned;
-                    } else if (currentDate && dailyAssignedWorkers.size === 0) {
-                        // 작업자 이름이 없는 날짜도 처리 (예: 휴가만 있는 날)
-                        const unassigned = [...allWorkers].sort((a, b) => allWorkers.indexOf(a) - allWorkers.indexOf(b));
                         allDailyUnassigned[currentDate] = unassigned;
                     }
 
                     currentDate = dateMatch[1];
                     dailyAssignedWorkers = new Set(); // 새 날짜를 위해 초기화
-                    // 여름휴가나 교육 등의 정보에서 직원을 추출하여 할당된 것으로 간주
-                    const holidayMatch = line.match(/여름휴가:\s*([^/]+)|교육:\s*([^/]+)|민방위:\s*([^/]+)/);
+
+                    // 날짜 줄 자체에 포함된 휴가/교육/민방위 인원 추출
+                    const holidayMatch = line.match(/(여름휴가|교육|민방위):\s*([^<]+)/);
                     if (holidayMatch) {
-                        const holidayNames = (holidayMatch[1] || holidayMatch[2] || holidayMatch[3] || '').split(',').map(name => name.trim());
+                        const holidayNames = holidayMatch[2].split(/,\s*|\s*\/\s*/).map(name => name.trim());
                         holidayNames.forEach(name => {
                             if (allWorkers.includes(name)) {
                                 dailyAssignedWorkers.add(name);
@@ -257,20 +282,28 @@
                     return; // 날짜 줄은 다음 로직으로 가지 않음
                 }
 
-                // ■ 또는 □로 시작하는 작업 라인 또는 기타 정보 라인
-                if (currentDate && (line.startsWith('■') || line.startsWith('□') || line.startsWith('*') || line.startsWith('★') || line.startsWith('-') || line.startsWith('✔'))) {
-                    let tempWorkers = [];
-                    let match;
-                    while ((match = workerNamePattern.exec(line)) !== null) {
-                        tempWorkers.push(match[0]);
-                    }
+                // 현재 날짜가 설정된 상태에서 작업 라인 처리
+                if (currentDate) {
+                    // 작업 라인에서 직원 이름 추출
+                    // 예: / 신지호, 조용준, 권용덕 (현업PO_UR60034218완료)
+                    // 또는 참석자: 이상엽, 조광호
+                    // 또는 담당자 : 김진성 차장
+                    const assignmentMatch = line.match(/\/([^()]+)\s*(?:\(현업PO_UR\d+완료\))?$/) ||
+                                            line.match(/(?:참석자|담당자):\s*([^<]+)/); // '참석자:' 또는 '담당자:' 뒤 이름 추출
 
-                    // 추출된 이름 중 전체 직원 명단에 있는 이름만 할당된 것으로 추가
-                    tempWorkers.forEach(name => {
-                        if (allWorkers.includes(name)) {
-                            dailyAssignedWorkers.add(name);
-                        }
-                    });
+                    if (assignmentMatch) {
+                        const namesString = assignmentMatch[1];
+                        const names = namesString.split(/,\s*|\s*\/\s*/).map(name => name.trim()); // 콤마 또는 슬래시로 구분
+                        
+                        names.forEach(name => {
+                            // 이름이 '프로'나 '기정', '차장', 'TL', '부장님' 같은 직함을 포함할 수 있으므로,
+                            // 실제 이름 부분만 추출하고, 전체 직원 명단에 있는지 확인
+                            const cleanName = name.replace(/(프로|기정|차장|TL|부장님|)/g, '').trim();
+                            if (allWorkers.includes(cleanName)) {
+                                dailyAssignedWorkers.add(cleanName);
+                            }
+                        });
+                    }
                 }
             });
 
@@ -292,6 +325,15 @@
                 dateSection.className = 'date-section';
                 dateSection.innerHTML = `<h3>${date}</h3>`;
 
+                const unassignedContainer = document.createElement('div');
+                unassignedContainer.className = 'no-assignment-list-container';
+
+                const label = document.createElement('span');
+                label.className = 'no-assignment-label';
+                label.textContent = '남는 인원: ';
+                unassignedContainer.appendChild(label);
+
+
                 if (unassignedList.length > 0) {
                     const ul = document.createElement('ul');
                     ul.className = 'no-assignment-list';
@@ -300,13 +342,14 @@
                         li.textContent = worker;
                         ul.appendChild(li);
                     });
-                    dateSection.appendChild(ul);
+                    unassignedContainer.appendChild(ul);
                 } else {
                     const p = document.createElement('p');
                     p.className = 'empty-message';
                     p.textContent = '모든 직원이 배정되었습니다!';
-                    dateSection.appendChild(p);
+                    unassignedContainer.appendChild(p);
                 }
+                dateSection.appendChild(unassignedContainer);
                 resultsDiv.appendChild(dateSection);
             }
 
