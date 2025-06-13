@@ -155,12 +155,6 @@
             white-space: nowrap; /* 줄바꿈 방지 */
         }
 
-        /* 원래 있던 • 제거 */
-        /* .no-assignment-list li:before {
-            content: '• ';
-            color: #007bff;
-        } */
-
         .empty-message {
             color: #6c757d;
             font-style: italic;
@@ -216,7 +210,7 @@
         <div id="results" class="result-section" style="display:none;">
             <h2>일별 미배정 직원</h2>
             </div>
-        <div class="version">Version: 1.1</div>
+        <div class="version">Version: 1.2</div>
     </div>
 
     <script>
@@ -247,9 +241,7 @@
 
             // 정규표현식을 사용하여 날짜와 직원을 추출
             const datePattern = /<(\d{1,2}월\s*\d{1,2}일\s*[가-힣]{1}요일)>/;
-            // 직원 이름 패턴: 한글 두 글자 이상 (공백 포함 가능) - 보다 유연하게 '님' 같은 접미사도 고려하지 않도록
-            const workerNamePattern = /[가-힣]{2,3}/g; // 2~3글자 한글 이름 (일반적인 이름 길이)
-
+            
             lines.forEach(line => {
                 line = line.trim();
 
@@ -269,14 +261,18 @@
                     currentDate = dateMatch[1];
                     dailyAssignedWorkers = new Set(); // 새 날짜를 위해 초기화
 
-                    // 날짜 줄 자체에 포함된 휴가/교육/민방위 인원 추출
-                    const holidayMatch = line.match(/(여름휴가|교육|민방위):\s*([^<]+)/);
-                    if (holidayMatch) {
-                        const holidayNames = holidayMatch[2].split(/,\s*|\s*\/\s*/).map(name => name.trim());
-                        holidayNames.forEach(name => {
-                            if (allWorkers.includes(name)) {
-                                dailyAssignedWorkers.add(name);
-                            }
+                    // 날짜 줄 자체에 포함된 휴가/교육/민방위 인원 추출 강화
+                    // 예: 여름휴가: 노진성 / 교육: 강범일
+                    const specialDutyMatch = line.match(/(?:여름휴가|교육|민방위):\s*([가-힣\s,]+)/g);
+                    if (specialDutyMatch) {
+                        specialDutyMatch.forEach(match => {
+                            const namesString = match.split(/:\s*/)[1]; // "여름휴가: 노진성" -> "노진성"
+                            const names = namesString.split(/,\s*|\s*\/\s*/).map(name => name.trim());
+                            names.forEach(name => {
+                                if (allWorkers.includes(name)) {
+                                    dailyAssignedWorkers.add(name);
+                                }
+                            });
                         });
                     }
                     return; // 날짜 줄은 다음 로직으로 가지 않음
@@ -288,18 +284,30 @@
                     // 예: / 신지호, 조용준, 권용덕 (현업PO_UR60034218완료)
                     // 또는 참석자: 이상엽, 조광호
                     // 또는 담당자 : 김진성 차장
-                    const assignmentMatch = line.match(/\/([^()]+)\s*(?:\(현업PO_UR\d+완료\))?$/) ||
+                    // '/' 뒤에 오는 모든 한글 이름을 유연하게 추출하도록 수정
+                    // '참석자:', '담당자:' 뒤에 오는 이름도 포함
+                    const assignmentMatch = line.match(/\/([^()]+(?:연락처:\s*\d{3}-\d{4}-\d{4})?.*)$/) || // '/' 뒤에 오는 문자열 전체를 유연하게 캡처
                                             line.match(/(?:참석자|담당자):\s*([^<]+)/); // '참석자:' 또는 '담당자:' 뒤 이름 추출
 
                     if (assignmentMatch) {
-                        const namesString = assignmentMatch[1];
+                        // 캡처된 그룹에서 이름 문자열을 가져옴
+                        let namesString = assignmentMatch[1];
+
+                        // 불필요한 정보 제거 (괄호 안의 내용, '-취소', '연락처:', '완료' 등)
+                        namesString = namesString.replace(/\([^)]+\)/g, '') // 괄호 안 내용 제거
+                                                 .replace(/-취소/g, '') // '-취소' 제거
+                                                 .replace(/연락처:\s*\d{3}-\d{4}-\d{4}/g, '') // 연락처 제거
+                                                 .replace(/완료/g, '') // '완료' 제거
+                                                 .replace(/사업주대리 위임인:/g, '') // '사업주대리 위임인:' 제거
+                                                 .trim();
+                        
                         const names = namesString.split(/,\s*|\s*\/\s*/).map(name => name.trim()); // 콤마 또는 슬래시로 구분
                         
                         names.forEach(name => {
                             // 이름이 '프로'나 '기정', '차장', 'TL', '부장님' 같은 직함을 포함할 수 있으므로,
                             // 실제 이름 부분만 추출하고, 전체 직원 명단에 있는지 확인
-                            const cleanName = name.replace(/(프로|기정|차장|TL|부장님|)/g, '').trim();
-                            if (allWorkers.includes(cleanName)) {
+                            const cleanName = name.replace(/(프로|기정|차장|TL|부장님)$/g, '').trim(); // 직함이 이름 뒤에 붙는 경우 처리
+                            if (allWorkers.includes(cleanName) && cleanName.length >= 2) { // 이름이 최소 2글자 이상인지 확인 (불필요한 한 글자 방지)
                                 dailyAssignedWorkers.add(cleanName);
                             }
                         });
@@ -307,7 +315,7 @@
                 }
             });
 
-            // 마지막 날짜의 미배정 직원 처리
+            // 마지막 날짜의 미배정 직원 처리 (루프 종료 후)
             if (currentDate) {
                 const unassigned = getUnassignedWorkers(dailyAssignedWorkers);
                 allDailyUnassigned[currentDate] = unassigned;
