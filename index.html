@@ -163,7 +163,7 @@
         <button onclick="analyzeTasks()">인원 현황 확인</button>
         <div id="results"></div>
         <div class="version-info">
-            Version: v1.5
+            Version: v1.6
         </div>
     </div>
 
@@ -209,13 +209,17 @@
                             summerVacation: new Set(),
                             education: new Set(),
                             civilDefense: new Set(),
+                            annualLeave: new Set(), // 연차 추가
+                            halfDayLeave: new Set(), // 반차 추가
+                            sickLeave: new Set(),    // 병가 추가
                             other: new Set()
                         }
                     };
                     // 날짜 라인 뒤에 오는 특별 사유 처리 (현재 줄의 다음 줄 확인)
                     if (i + 1 < lines.length) {
                         const nextLine = lines[i + 1].trim();
-                        const exclusionMatch = nextLine.match(/^(여름휴가|교육|민방위):\s*(.+)/);
+                        // 정규표현식에 '연차', '반차', '병가' 추가
+                        const exclusionMatch = nextLine.match(/^(여름휴가|교육|민방위|연차|반차|병가):\s*(.+)/);
                         if (exclusionMatch) {
                             const reason = exclusionMatch[1];
                             const employees = exclusionMatch[2].split(',').map(name => name.trim());
@@ -223,6 +227,9 @@
                                 if (reason === '여름휴가') dailyData[currentDay].exclusions.summerVacation.add(employee);
                                 else if (reason === '교육') dailyData[currentDay].exclusions.education.add(employee);
                                 else if (reason === '민방위') dailyData[currentDay].exclusions.civilDefense.add(employee);
+                                else if (reason === '연차') dailyData[currentDay].exclusions.annualLeave.add(employee); 
+                                else if (reason === '반차') dailyData[currentDay].exclusions.halfDayLeave.add(employee); 
+                                else if (reason === '병가') dailyData[currentDay].exclusions.sickLeave.add(employee); 
                                 else dailyData[currentDay].exclusions.other.add(employee);
                             });
                             i++; // 다음 줄은 이미 처리했으므로 한 줄 건너뜀
@@ -289,9 +296,27 @@
                         tempExcludedList.push({ name: worker, reason: '민방위' });
                     });
                 }
+                if (excludedByReason.annualLeave.size > 0) { // 연차 처리
+                    Array.from(excludedByReason.annualLeave).forEach(worker => {
+                        allOccupiedWorkers.add(worker);
+                        tempExcludedList.push({ name: worker, reason: '연차' });
+                    });
+                }
+                if (excludedByReason.halfDayLeave.size > 0) { // 반차 처리
+                    Array.from(excludedByReason.halfDayLeave).forEach(worker => {
+                        allOccupiedWorkers.add(worker);
+                        tempExcludedList.push({ name: worker, reason: '반차' });
+                    });
+                }
+                if (excludedByReason.sickLeave.size > 0) { // 병가 처리
+                    Array.from(excludedByReason.sickLeave).forEach(worker => {
+                        allOccupiedWorkers.add(worker);
+                        tempExcludedList.push({ name: worker, reason: '병가' });
+                    });
+                }
                 // 기타 제외 인원 (현재 형식에서는 없지만 확장성 고려)
                 if (excludedByReason.other.size > 0) {
-                    Array.from(excludedByReason.other).forEach(worker => {
+                     Array.from(excludedByReason.other).forEach(worker => {
                         allOccupiedWorkers.add(worker);
                         tempExcludedList.push({ name: worker, reason: '기타 제외' });
                     });
@@ -300,18 +325,21 @@
                 // 제외 인원들을 사유와 함께 직급 순서로 정렬하여 HTML로 표시
                 const sortedSpecialExcludedWorkers = tempExcludedList.sort((a, b) => sortByEmployeeOrder(a.name, b.name));
                 if (sortedSpecialExcludedWorkers.length > 0) {
-                    excludedReasonsHtml = `<p><strong>휴가/교육/민방위 인원 (${sortedSpecialExcludedWorkers.length}명):</strong></p><div class="employee-list">`;
+                    excludedReasonsHtml = `<p><strong>휴가/교육/민방위/기타 제외 인원 (${sortedSpecialExcludedWorkers.length}명):</strong></p><div class="employee-list">`;
                     sortedSpecialExcludedWorkers.forEach(item => {
                         let reasonText = '';
                         if (item.reason === '여름휴가') reasonText = ' (휴가)';
                         else if (item.reason === '교육') reasonText = ' (교육)';
                         else if (item.reason === '민방위') reasonText = ' (민방위)';
+                        else if (item.reason === '연차') reasonText = ' (연차)';
+                        else if (item.reason === '반차') reasonText = ' (반차)';
+                        else if (item.reason === '병가') reasonText = ' (병가)';
                         else reasonText = ` (${item.reason})`; // 기타 사유
                         excludedReasonsHtml += `<span class="employee-tag excluded-tag">${item.name}${reasonText}</span>`;
                     });
                     excludedReasonsHtml += `</div>`;
                 } else {
-                    excludedReasonsHtml = '<p><strong>휴가/교육/민방위 인원:</strong> <span class="no-one">없음</span></p>';
+                    excludedReasonsHtml = '<p><strong>휴가/교육/민방위/기타 제외 인원:</strong> <span class="no-one">없음</span></p>';
                 }
 
 
