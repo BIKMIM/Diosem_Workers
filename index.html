@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>남는 인원 확인</title>
+    <title>인원 현황판</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -79,6 +79,8 @@
             flex-wrap: wrap;
             gap: 8px; /* 항목 간 간격 */
             margin-top: 10px;
+            margin-bottom: 15px; /* 목록 아래 여백 추가 */
+            padding-left: 0; /* 기본 목록 패딩 제거 */
         }
         .employee-tag {
             background-color: #bdc3c7;
@@ -88,12 +90,20 @@
             font-size: 0.85em;
             white-space: nowrap; /* 태그가 줄바꿈되지 않도록 */
         }
+        .assigned-tag {
+            background-color: #2ecc71; /* 배정된 인원 색상 */
+            color: white;
+        }
+        .remaining-tag {
+            background-color: #3498db; /* 남는 인원 색상 */
+            color: white;
+        }
         .no-one {
             color: #e74c3c;
             font-style: italic;
         }
 
-        /* 모바일 최적화를 위한 미디어 쿼리 (선택 사항이지만 더 세밀한 조정 가능) */
+        /* 모바일 최적화를 위한 미디어 쿼리 */
         @media (max-width: 600px) {
             body {
                 padding: 15px;
@@ -122,16 +132,29 @@
         <h1>주간 작업 현황 분석</h1>
         <p>아래 입력창에 주간 작업 정보를 붙여넣고 '남는 인원 확인' 버튼을 눌러주세요.</p>
         <textarea id="taskInput" placeholder="여기에 작업 정보를 붙여넣으세요. (예: <6월 9일 월요일> 여름휴가: 최현철, 노진성...)"></textarea>
-        <button onclick="analyzeTasks()">남는 인원 확인</button>
+        <button onclick="analyzeTasks()">인원 현황 확인</button>
         <div id="results"></div>
     </div>
 
     <script>
-        // 전체 직원 명단 (미리 정의) - 실제 회사의 모든 직원 이름을 추가해주세요!
-        const ALL_EMPLOYEES = new Set([
+        // 전체 직원 명단 (직급 순서대로 정렬되어야 함)
+        const ALL_EMPLOYEES = [
             '이상엽', '서한주', '강범일', '최광섭', '조광호', '최현철', '김진탁', '신재웅', '권용덕', '김태영',
             '노진성', '장다빈', '조용준', '신지호', '최이택', '고상원', '박정민', '박경식', '임영곤', '윤호진'
-        ]);
+        ];
+
+        // ALL_EMPLOYEES의 순서를 참조하기 위한 맵 생성
+        const employeeOrderMap = new Map();
+        ALL_EMPLOYEES.forEach((name, index) => {
+            employeeOrderMap.set(name, index);
+        });
+
+        // 커스텀 정렬 함수: ALL_EMPLOYEES 순서대로 정렬
+        function sortByEmployeeOrder(a, b) {
+            const indexA = employeeOrderMap.has(a) ? employeeOrderMap.get(a) : Infinity;
+            const indexB = employeeOrderMap.has(b) ? employeeOrderMap.get(b) : Infinity;
+            return indexA - indexB;
+        }
 
         function analyzeTasks() {
             const inputText = document.getElementById('taskInput').value;
@@ -140,14 +163,16 @@
 
             const lines = inputText.split('\n');
             let currentDay = '';
-            const dailyOccupied = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyAssignments = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyExclusions = {}; // { '6월 9일 월요일': Set<직원명>, ... }
 
             // 날짜 파싱 및 작업자/제외 인원 추출
             lines.forEach(line => {
                 const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
                 if (dayMatch) {
                     currentDay = dayMatch[1];
-                    dailyOccupied[currentDay] = new Set();
+                    dailyAssignments[currentDay] = new Set();
+                    dailyExclusions[currentDay] = new Set();
                 }
 
                 if (currentDay) {
@@ -155,30 +180,30 @@
                     const workerMatch = line.match(/\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
                     if (workerMatch && workerMatch[1]) {
                         workerMatch[1].split(',').forEach(worker => {
-                            dailyOccupied[currentDay].add(worker.trim());
+                            dailyAssignments[currentDay].add(worker.trim());
                         });
                     }
                     // 휴가, 교육, 민방위 등 제외 인원 추출
                     const exclusionMatch = line.match(/(여름휴가|교육|민방위):\s*(.+)/);
                     if (exclusionMatch) {
                         exclusionMatch[2].split(',').forEach(excluded => {
-                            dailyOccupied[currentDay].add(excluded.trim());
+                            dailyExclusions[currentDay].add(excluded.trim());
                         });
                     }
                 }
             });
 
             // 결과 계산 및 표시
-            const sortedDays = Object.keys(dailyOccupied).sort((a, b) => {
+            const sortedDays = Object.keys(dailyAssignments).sort((a, b) => {
                 const getDate = (dayStr) => {
                     const parts = dayStr.match(/(\d{1,2})월 (\d{1,2})일/);
                     if (!parts) return 0;
-                    // 현재 연도 (2025년)를 가정하고 날짜 객체 생성
-                    return new Date(2025, parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+                    // 현재 연도 (2025년)를 가정하고 날짜 객체 생성 (사용자 입력 기반이므로 유동적)
+                    const currentYear = new Date().getFullYear();
+                    return new Date(currentYear, parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
                 };
                 return getDate(a) - getDate(b);
             });
-
 
             if (sortedDays.length === 0) {
                 resultsDiv.innerHTML = '<p style="text-align: center; color: #e74c3c;">분석할 작업 정보가 없습니다. 올바른 형식으로 붙여넣어 주세요.</p>';
@@ -186,20 +211,42 @@
             }
 
             sortedDays.forEach(day => {
-                const occupiedWorkers = dailyOccupied[day];
+                const assignedWorkers = dailyAssignments[day];
+                const excludedWorkers = dailyExclusions[day];
                 const remainingWorkers = new Set(ALL_EMPLOYEES);
 
-                // ALL_EMPLOYEES에서 occupiedWorkers의 모든 인원을 제외
-                occupiedWorkers.forEach(worker => remainingWorkers.delete(worker));
+                // ALL_EMPLOYEES에서 할당된 인원 및 제외된 인원 모두 제거
+                assignedWorkers.forEach(worker => remainingWorkers.delete(worker));
+                excludedWorkers.forEach(worker => remainingWorkers.delete(worker));
 
-                const remainingListHtml = remainingWorkers.size > 0 
-                    ? Array.from(remainingWorkers).sort().map(worker => `<span class="employee-tag">${worker}</span>`).join('')
+                // 표시될 할당된 인원 (제외 인원 포함)
+                const displayAssignedAndExcluded = new Set();
+                assignedWorkers.forEach(worker => displayAssignedAndExcluded.add(worker));
+                excludedWorkers.forEach(worker => displayAssignedAndExcluded.add(worker));
+
+                // 명단 정렬 (직급 순서)
+                const sortedAssignedWorkers = Array.from(displayAssignedAndExcluded).sort(sortByEmployeeOrder);
+                const sortedRemainingWorkers = Array.from(remainingWorkers).sort(sortByEmployeeOrder);
+
+                const assignedListHtml = sortedAssignedWorkers.length > 0
+                    ? sortedAssignedWorkers.map(worker => {
+                        const isExcluded = excludedWorkers.has(worker);
+                        return `<span class="employee-tag ${isExcluded ? '' : 'assigned-tag'}" style="${isExcluded ? 'background-color: #f39c12; color: white;' : ''}">${worker}${isExcluded ? ' (휴/교/민)' : ''}</span>`;
+                    }).join('')
+                    : '<span class="no-one">작업 배정/제외된 인원 없음</span>';
+
+                const remainingListHtml = sortedRemainingWorkers.length > 0
+                    ? sortedRemainingWorkers.map(worker => `<span class="employee-tag remaining-tag">${worker}</span>`).join('')
                     : '<span class="no-one">남는 인원이 없습니다.</span>';
 
                 const resultHtml = `
                     <div class="result-day">
                         <h3>${day}</h3>
-                        <p><strong>남는 인원 (${remainingWorkers.size}명):</strong></p>
+                        <p><strong>작업 배정 / 휴가 / 교육 / 민방위 인원 (${sortedAssignedWorkers.length}명):</strong></p>
+                        <div class="employee-list">
+                            ${assignedListHtml}
+                        </div>
+                        <p><strong>남는 인원 (${sortedRemainingWorkers.length}명):</strong></p>
                         <div class="employee-list">
                             ${remainingListHtml}
                         </div>
