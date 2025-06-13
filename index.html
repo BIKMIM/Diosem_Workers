@@ -5,93 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>인원 현황판</title>
     <style>
+        /* 기본 HTML 요소 스타일 초기화 및 설정 */
+        html {
+            font-size: 16px; /* 1rem의 기준 설정 */
+        }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
-            padding: 20px; 
+            padding: 1.25rem; /* 20px */
             background-color: #f4f7f6;
             color: #333;
             line-height: 1.6;
         }
+
+        /* 컨테이너: 최대 너비를 제한하고 중앙 정렬 */
         .container {
-            max-width: 800px;
+            max-width: 50rem; /* 800px */
             margin: 0 auto;
             background-color: #fff;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 1.5625rem; /* 25px */
+            border-radius: 0.625rem; /* 10px */
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1); /* 0 4px 8px */
         }
+
+        /* 제목 및 설명 텍스트 */
         h1 { 
             color: #2c3e50; 
             text-align: center; 
-            margin-bottom: 25px;
-            font-size: 1.8em;
+            margin-bottom: 1.5625rem; /* 25px */
+            font-size: 1.8em; /* 부모 글꼴 크기의 1.8배 */
         }
         p {
             text-align: center;
             color: #555;
-            margin-bottom: 20px;
+            margin-bottom: 1.25rem; /* 20px */
         }
+
+        /* 텍스트 입력창 */
         textarea { 
-            width: calc(100% - 20px); 
-            height: 250px; 
-            margin-bottom: 15px; 
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 0.95em;
-            resize: vertical;
+            width: calc(100% - 0.625rem * 2); /* 100% - padding * 2 */
+            height: 15.625rem; /* 250px */
+            margin-bottom: 0.9375rem; /* 15px */
+            padding: 0.625rem; /* 10px */
+            border: 0.0625rem solid #ccc; /* 1px */
+            border-radius: 0.3125rem; /* 5px */
+            font-size: 0.95em; /* 부모 글꼴 크기의 0.95배 */
+            resize: vertical; /* 세로 크기 조절 허용 */
             box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
         }
+
+        /* 버튼 */
         button { 
             display: block;
             width: 100%;
-            padding: 12px 20px;
+            padding: 0.75rem 1.25rem; /* 12px 20px */
             background-color: #3498db;
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 1.1em;
+            border-radius: 0.3125rem; /* 5px */
+            font-size: 1.1em; /* 부모 글꼴 크기의 1.1배 */
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
         button:hover {
             background-color: #2980b9;
         }
+
+        /* 결과 표시 영역 - 요일별 섹션 */
         .result-day { 
-            margin-top: 25px; 
-            padding: 15px; 
+            margin-top: 1.5625rem; /* 25px */
+            padding: 0.9375rem; /* 15px */
             background-color: #ecf0f1;
-            border-left: 5px solid #3498db;
-            border-radius: 5px;
+            border-left: 0.3125rem solid #3498db; /* 5px */
+            border-radius: 0.3125rem; /* 5px */
         }
         .result-day h3 { 
             margin-top: 0; 
             color: #2c3e50;
-            font-size: 1.4em;
-            margin-bottom: 10px;
+            font-size: 1.4em; /* 부모 글꼴 크기의 1.4배 */
+            margin-bottom: 0.625rem; /* 10px */
         }
         .result-day p strong {
             color: #555;
         }
+
+        /* 직원 태그 목록 */
         .employee-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px; /* 항목 간 간격 */
-            margin-top: 10px;
-            margin-bottom: 15px; /* 목록 아래 여백 추가 */
-            padding-left: 0; /* 기본 목록 패딩 제거 */
+            gap: 0.5rem; /* 8px */
+            margin-top: 0.625rem; /* 10px */
+            margin-bottom: 0.9375rem; /* 15px */
+            padding-left: 0; 
         }
         .employee-tag {
             background-color: #bdc3c7;
             color: #333;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 0.85em;
+            padding: 0.375rem 0.625rem; /* 6px 10px */
+            border-radius: 0.25rem; /* 4px */
+            font-size: 0.85em; /* 부모 글꼴 크기의 0.85배 */
             white-space: nowrap; /* 태그가 줄바꿈되지 않도록 */
         }
         .assigned-tag {
             background-color: #2ecc71; /* 배정된 인원 색상 */
+            color: white;
+        }
+        .excluded-tag { /* 휴가/교육/민방위 인원 색상 */
+            background-color: #f39c12;
             color: white;
         }
         .remaining-tag {
@@ -102,30 +122,32 @@
             color: #e74c3c;
             font-style: italic;
         }
+
+        /* 버전 정보 */
         .version-info {
             text-align: center;
-            margin-top: 30px;
-            font-size: 0.8em;
+            margin-top: 1.875rem; /* 30px */
+            font-size: 0.8em; /* 부모 글꼴 크기의 0.8배 */
             color: #7f8c8d;
         }
 
-        /* 모바일 최적화를 위한 미디어 쿼리 */
-        @media (max-width: 600px) {
+        /* 모바일 최적화를 위한 미디어 쿼리 (특정 해상도에서 추가 조정) */
+        @media (max-width: 37.5rem) { /* 600px */
             body {
-                padding: 15px;
+                padding: 0.9375rem; /* 15px */
             }
             .container {
-                padding: 15px;
+                padding: 0.9375rem; /* 15px */
             }
             h1 {
                 font-size: 1.5em;
             }
             textarea {
-                height: 200px;
+                height: 12.5rem; /* 200px */
             }
             button {
                 font-size: 1em;
-                padding: 10px 15px;
+                padding: 0.625rem 0.9375rem; /* 10px 15px */
             }
             .result-day h3 {
                 font-size: 1.2em;
@@ -137,11 +159,11 @@
     <div class="container">
         <h1>주간 작업 현황 분석</h1>
         <p>아래 입력창에 주간 작업 정보를 붙여넣고 '인원 현황 확인' 버튼을 눌러주세요.</p>
-        <textarea id="taskInput" placeholder="여기에 작업 정보를 붙여넣으세요. (예: <6월 9일 월요일> 여름휴가: 최현철, 노진성...)"></textarea>
+        <textarea id="taskInput" placeholder="여기에 작업 정보를 붙여넣으세요. (예: &#60;6월 9일 월요일&#62; 여름휴가: 최현철, 노진성...)"></textarea>
         <button onclick="analyzeTasks()">인원 현황 확인</button>
         <div id="results"></div>
         <div class="version-info">
-            Version: v1.2
+            Version: v1.4
         </div>
     </div>
 
@@ -172,38 +194,50 @@
 
             const lines = inputText.split('\n');
             let currentDay = '';
-            const dailyAssignments = {}; // { '6월 9일 월요일': Set<직원명>, ... }
-            const dailyExclusions = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyAssigned = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyExclusions = {}; // { '6월 9일 월요일': { summerVacation: Set<직원명>, education: Set<직원명>, ... } }
 
             // 날짜 파싱 및 작업자/제외 인원 추출
             lines.forEach(line => {
                 const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
                 if (dayMatch) {
                     currentDay = dayMatch[1];
-                    dailyAssignments[currentDay] = new Set();
-                    dailyExclusions[currentDay] = new Set();
+                    dailyAssigned[currentDay] = new Set();
+                    dailyExclusions[currentDay] = {
+                        summerVacation: new Set(),
+                        education: new Set(),
+                        civilDefense: new Set(),
+                        other: new Set()
+                    };
                 }
 
                 if (currentDay) {
-                    // 작업자 추출
-                    const workerMatch = line.match(/\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
+                    // 휴가, 교육, 민방위 등 특별 제외 인원 추출 (날짜 라인 바로 뒤)
+                    const exclusionMatch = line.match(/^\s*(여름휴가|교육|민방위):\s*(.+)/);
+                    if (exclusionMatch) {
+                        const reason = exclusionMatch[1];
+                        const employees = exclusionMatch[2].split(',').map(name => name.trim());
+                        employees.forEach(employee => {
+                            if (reason === '여름휴가') dailyExclusions[currentDay].summerVacation.add(employee);
+                            else if (reason === '교육') dailyExclusions[currentDay].education.add(employee);
+                            else if (reason === '민방위') dailyExclusions[currentDay].civilDefense.add(employee);
+                            else dailyExclusions[currentDay].other.add(employee);
+                        });
+                        return; 
+                    }
+
+                    // 작업자 추출 (■ 로 시작하는 라인)
+                    const workerMatch = line.match(/^■.+?\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
                     if (workerMatch && workerMatch[1]) {
                         workerMatch[1].split(',').forEach(worker => {
-                            dailyAssignments[currentDay].add(worker.trim());
-                        });
-                    }
-                    // 휴가, 교육, 민방위 등 제외 인원 추출
-                    const exclusionMatch = line.match(/(여름휴가|교육|민방위):\s*(.+)/);
-                    if (exclusionMatch) {
-                        exclusionMatch[2].split(',').forEach(excluded => {
-                            dailyExclusions[currentDay].add(excluded.trim());
+                            dailyAssigned[currentDay].add(worker.trim());
                         });
                     }
                 }
             });
 
             // 결과 계산 및 표시
-            const sortedDays = Object.keys(dailyAssignments).sort((a, b) => {
+            const sortedDays = Object.keys(dailyAssigned).sort((a, b) => {
                 const getDate = (dayStr) => {
                     const parts = dayStr.match(/(\d{1,2})월 (\d{1,2})일/);
                     if (!parts) return 0;
@@ -220,29 +254,44 @@
             }
 
             sortedDays.forEach(day => {
-                const assignedWorkers = dailyAssignments[day];
-                const excludedWorkers = dailyExclusions[day];
+                const assignedWorkers = dailyAssigned[day];
+                const excludedByReason = dailyExclusions[day];
+                const allOccupiedWorkers = new Set(); 
+
+                // 작업 배정 인원 추가
+                assignedWorkers.forEach(worker => allOccupiedWorkers.add(worker));
+
+                // 사유별 제외 인원 추가 (특별 사유 인원들은 별도 목록에 담음)
+                let excludedReasonsHtml = '';
+                if (excludedByReason) {
+                    if (excludedByReason.summerVacation.size > 0) {
+                        Array.from(excludedByReason.summerVacation).sort(sortByEmployeeOrder).forEach(worker => allOccupiedWorkers.add(worker));
+                        excludedReasonsHtml += `<p><strong>여름휴가:</strong> <div class="employee-list">${Array.from(excludedByReason.summerVacation).sort(sortByEmployeeOrder).map(worker => `<span class="employee-tag excluded-tag">${worker}</span>`).join('')}</div></p>`;
+                    }
+                    if (excludedByReason.education.size > 0) {
+                        Array.from(excludedByReason.education).sort(sortByEmployeeOrder).forEach(worker => allOccupiedWorkers.add(worker));
+                        excludedReasonsHtml += `<p><strong>교육:</strong> <div class="employee-list">${Array.from(excludedByReason.education).sort(sortByEmployeeOrder).map(worker => `<span class="employee-tag excluded-tag">${worker}</span>`).join('')}</div></p>`;
+                    }
+                    if (excludedByReason.civilDefense.size > 0) {
+                        Array.from(excludedByReason.civilDefense).sort(sortByEmployeeOrder).forEach(worker => allOccupiedWorkers.add(worker));
+                        excludedReasonsHtml += `<p><strong>민방위:</strong> <div class="employee-list">${Array.from(excludedByReason.civilDefense).sort(sortByEmployeeOrder).map(worker => `<span class="employee-tag excluded-tag">${worker}</span>`).join('')}</div></p>`;
+                    }
+                    if (excludedByReason.other.size > 0) {
+                         Array.from(excludedByReason.other).sort(sortByEmployeeOrder).forEach(worker => allOccupiedWorkers.add(worker));
+                        excludedReasonsHtml += `<p><strong>기타 제외:</strong> <div class="employee-list">${Array.from(excludedByReason.other).sort(sortByEmployeeOrder).map(worker => `<span class="employee-tag excluded-tag">${worker}</span>`).join('')}</div></p>`;
+                    }
+                }
+
                 const remainingWorkers = new Set(ALL_EMPLOYEES);
-
-                // ALL_EMPLOYEES에서 할당된 인원 및 제외된 인원 모두 제거
-                assignedWorkers.forEach(worker => remainingWorkers.delete(worker));
-                excludedWorkers.forEach(worker => remainingWorkers.delete(worker));
-
-                // 표시될 할당된 인원 (제외 인원 포함)
-                const displayAssignedAndExcluded = new Set();
-                assignedWorkers.forEach(worker => displayAssignedAndExcluded.add(worker));
-                excludedWorkers.forEach(worker => displayAssignedAndExcluded.add(worker));
+                allOccupiedWorkers.forEach(worker => remainingWorkers.delete(worker));
 
                 // 명단 정렬 (직급 순서)
-                const sortedAssignedWorkers = Array.from(displayAssignedAndExcluded).sort(sortByEmployeeOrder);
+                const sortedAssignedWorkers = Array.from(assignedWorkers).sort(sortByEmployeeOrder);
                 const sortedRemainingWorkers = Array.from(remainingWorkers).sort(sortByEmployeeOrder);
 
                 const assignedListHtml = sortedAssignedWorkers.length > 0
-                    ? sortedAssignedWorkers.map(worker => {
-                        const isExcluded = excludedWorkers.has(worker);
-                        return `<span class="employee-tag ${isExcluded ? '' : 'assigned-tag'}" style="${isExcluded ? 'background-color: #f39c12; color: white;' : ''}">${worker}${isExcluded ? ' (휴/교/민)' : ''}</span>`;
-                    }).join('')
-                    : '<span class="no-one">작업 배정/제외된 인원 없음</span>';
+                    ? sortedAssignedWorkers.map(worker => `<span class="employee-tag assigned-tag">${worker}</span>`).join('')
+                    : '<span class="no-one">작업 배정된 인원 없음</span>';
 
                 const remainingListHtml = sortedRemainingWorkers.length > 0
                     ? sortedRemainingWorkers.map(worker => `<span class="employee-tag remaining-tag">${worker}</span>`).join('')
@@ -251,7 +300,8 @@
                 const resultHtml = `
                     <div class="result-day">
                         <h3>${day}</h3>
-                        <p><strong>작업 배정 / 휴가 / 교육 / 민방위 인원 (${sortedAssignedWorkers.length}명):</strong></p>
+                        ${excludedReasonsHtml ? excludedReasonsHtml : '<p><strong>휴가/교육/민방위 인원:</strong> <span class="no-one">없음</span></p>'}
+                        <p><strong>작업 배정 인원 (${sortedAssignedWorkers.length}명):</strong></p>
                         <div class="employee-list">
                             ${assignedListHtml}
                         </div>
