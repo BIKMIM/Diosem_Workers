@@ -5,26 +5,132 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>남는 인원 확인</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        textarea { width: 80%; height: 300px; margin-bottom: 10px; }
-        button { padding: 10px 20px; cursor: pointer; }
-        .result-day { margin-top: 20px; border: 1px solid #eee; padding: 10px; }
-        .result-day h3 { margin-top: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center; 
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        p {
+            text-align: center;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        textarea { 
+            width: calc(100% - 20px); 
+            height: 250px; 
+            margin-bottom: 15px; 
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.95em;
+            resize: vertical;
+            box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
+        }
+        button { 
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-day { 
+            margin-top: 25px; 
+            padding: 15px; 
+            background-color: #ecf0f1;
+            border-left: 5px solid #3498db;
+            border-radius: 5px;
+        }
+        .result-day h3 { 
+            margin-top: 0; 
+            color: #2c3e50;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+        }
+        .result-day p strong {
+            color: #555;
+        }
+        .employee-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px; /* 항목 간 간격 */
+            margin-top: 10px;
+        }
+        .employee-tag {
+            background-color: #bdc3c7;
+            color: #333;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            white-space: nowrap; /* 태그가 줄바꿈되지 않도록 */
+        }
+        .no-one {
+            color: #e74c3c;
+            font-style: italic;
+        }
+
+        /* 모바일 최적화를 위한 미디어 쿼리 (선택 사항이지만 더 세밀한 조정 가능) */
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            textarea {
+                height: 200px;
+            }
+            button {
+                font-size: 1em;
+                padding: 10px 15px;
+            }
+            .result-day h3 {
+                font-size: 1.2em;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>주간 작업 현황 분석</h1>
-    <p>아래 입력창에 주간 작업 정보를 붙여넣으세요.</p>
-    <textarea id="taskInput"></textarea><br>
-    <button onclick="analyzeTasks()">남는 인원 확인</button>
-    <div id="results"></div>
+    <div class="container">
+        <h1>주간 작업 현황 분석</h1>
+        <p>아래 입력창에 주간 작업 정보를 붙여넣고 '남는 인원 확인' 버튼을 눌러주세요.</p>
+        <textarea id="taskInput" placeholder="여기에 작업 정보를 붙여넣으세요. (예: <6월 9일 월요일> 여름휴가: 최현철, 노진성...)"></textarea>
+        <button onclick="analyzeTasks()">남는 인원 확인</button>
+        <div id="results"></div>
+    </div>
 
     <script>
-        // 전체 직원 명단 (미리 정의)
+        // 전체 직원 명단 (미리 정의) - 실제 회사의 모든 직원 이름을 추가해주세요!
         const ALL_EMPLOYEES = new Set([
             '이상엽', '서한주', '강범일', '최광섭', '조광호', '최현철', '김진탁', '신재웅', '권용덕', '김태영',
             '노진성', '장다빈', '조용준', '신지호', '최이택', '고상원', '박정민', '박경식', '임영곤', '윤호진'
-            // 실제 모든 직원 이름을 추가하세요.
         ]);
 
         function analyzeTasks() {
@@ -34,16 +140,14 @@
 
             const lines = inputText.split('\n');
             let currentDay = '';
-            const dailyAssignments = {}; // { '6월 9일 월요일': Set<직원명>, ... }
-            const dailyExclusions = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyOccupied = {}; // { '6월 9일 월요일': Set<직원명>, ... }
 
-            // 날짜 파싱 및 작업자 추출
+            // 날짜 파싱 및 작업자/제외 인원 추출
             lines.forEach(line => {
                 const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
                 if (dayMatch) {
                     currentDay = dayMatch[1];
-                    dailyAssignments[currentDay] = new Set();
-                    dailyExclusions[currentDay] = new Set();
+                    dailyOccupied[currentDay] = new Set();
                 }
 
                 if (currentDay) {
@@ -51,39 +155,58 @@
                     const workerMatch = line.match(/\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
                     if (workerMatch && workerMatch[1]) {
                         workerMatch[1].split(',').forEach(worker => {
-                            dailyAssignments[currentDay].add(worker.trim());
+                            dailyOccupied[currentDay].add(worker.trim());
                         });
                     }
                     // 휴가, 교육, 민방위 등 제외 인원 추출
                     const exclusionMatch = line.match(/(여름휴가|교육|민방위):\s*(.+)/);
                     if (exclusionMatch) {
                         exclusionMatch[2].split(',').forEach(excluded => {
-                            dailyExclusions[currentDay].add(excluded.trim());
+                            dailyOccupied[currentDay].add(excluded.trim());
                         });
                     }
                 }
             });
 
             // 결과 계산 및 표시
-            for (const day in dailyAssignments) {
-                const assignedWorkers = dailyAssignments[day];
-                const excludedWorkers = dailyExclusions[day];
-                const availableWorkers = new Set(ALL_EMPLOYEES);
+            const sortedDays = Object.keys(dailyOccupied).sort((a, b) => {
+                const getDate = (dayStr) => {
+                    const parts = dayStr.match(/(\d{1,2})월 (\d{1,2})일/);
+                    if (!parts) return 0;
+                    // 현재 연도 (2025년)를 가정하고 날짜 객체 생성
+                    return new Date(2025, parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+                };
+                return getDate(a) - getDate(b);
+            });
 
-                // 배정된 인원과 제외 인원 모두 availableWorkers에서 제거
-                assignedWorkers.forEach(worker => availableWorkers.delete(worker));
-                excludedWorkers.forEach(worker => availableWorkers.delete(worker));
+
+            if (sortedDays.length === 0) {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #e74c3c;">분석할 작업 정보가 없습니다. 올바른 형식으로 붙여넣어 주세요.</p>';
+                return;
+            }
+
+            sortedDays.forEach(day => {
+                const occupiedWorkers = dailyOccupied[day];
+                const remainingWorkers = new Set(ALL_EMPLOYEES);
+
+                // ALL_EMPLOYEES에서 occupiedWorkers의 모든 인원을 제외
+                occupiedWorkers.forEach(worker => remainingWorkers.delete(worker));
+
+                const remainingListHtml = remainingWorkers.size > 0 
+                    ? Array.from(remainingWorkers).sort().map(worker => `<span class="employee-tag">${worker}</span>`).join('')
+                    : '<span class="no-one">남는 인원이 없습니다.</span>';
 
                 const resultHtml = `
                     <div class="result-day">
                         <h3>${day}</h3>
-                        <p><strong>휴가/교육/민방위:</strong> ${excludedWorkers.size > 0 ? Array.from(excludedWorkers).join(', ') : '없음'}</p>
-                        <p><strong>배정된 인원:</strong> ${assignedWorkers.size > 0 ? Array.from(assignedWorkers).join(', ') : '없음'}</p>
-                        <p><strong>남는 인원 (${availableWorkers.size}명):</strong> ${availableWorkers.size > 0 ? Array.from(availableWorkers).join(', ') : '없음'}</p>
+                        <p><strong>남는 인원 (${remainingWorkers.size}명):</strong></p>
+                        <div class="employee-list">
+                            ${remainingListHtml}
+                        </div>
                     </div>
                 `;
                 resultsDiv.innerHTML += resultHtml;
-            }
+            });
         }
     </script>
 </body>
