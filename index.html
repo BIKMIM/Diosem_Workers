@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>남는 인원 확인</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        textarea { width: 80%; height: 300px; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; }
+        .result-day { margin-top: 20px; border: 1px solid #eee; padding: 10px; }
+        .result-day h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>주간 작업 현황 분석</h1>
+    <p>아래 입력창에 주간 작업 정보를 붙여넣으세요.</p>
+    <textarea id="taskInput"></textarea><br>
+    <button onclick="analyzeTasks()">남는 인원 확인</button>
+    <div id="results"></div>
+
+    <script>
+        // 전체 직원 명단 (미리 정의)
+        const ALL_EMPLOYEES = new Set([
+            '최현철', '노진성', '김정규', '신지호', '조용준', '권용덕', '이영길', '최광섭', '김진탁', '장다빈',
+            '최이택', '고상원', '서인호', '조광호', '신재웅', '이상엽', '박정민', '이원준', '강범일', '김태영',
+            '박경식', '서한주', '임영곤', '윤호진', '류호경', '안영재', '김준영', '유수민', '박용주', '송복영',
+            '김진성', '신윤교', '이상곤', '변준호', '서진수', '유승관', '고준', '박현호', '송민석', '박경춘'
+            // 실제 모든 직원 이름을 추가하세요.
+        ]);
+
+        function analyzeTasks() {
+            const inputText = document.getElementById('taskInput').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = ''; // 이전 결과 초기화
+
+            const lines = inputText.split('\n');
+            let currentDay = '';
+            const dailyAssignments = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+            const dailyExclusions = {}; // { '6월 9일 월요일': Set<직원명>, ... }
+
+            // 날짜 파싱 및 작업자 추출
+            lines.forEach(line => {
+                const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
+                if (dayMatch) {
+                    currentDay = dayMatch[1];
+                    dailyAssignments[currentDay] = new Set();
+                    dailyExclusions[currentDay] = new Set();
+                }
+
+                if (currentDay) {
+                    // 작업자 추출
+                    const workerMatch = line.match(/\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
+                    if (workerMatch && workerMatch[1]) {
+                        workerMatch[1].split(',').forEach(worker => {
+                            dailyAssignments[currentDay].add(worker.trim());
+                        });
+                    }
+                    // 휴가, 교육, 민방위 등 제외 인원 추출
+                    const exclusionMatch = line.match(/(여름휴가|교육|민방위):\s*(.+)/);
+                    if (exclusionMatch) {
+                        exclusionMatch[2].split(',').forEach(excluded => {
+                            dailyExclusions[currentDay].add(excluded.trim());
+                        });
+                    }
+                }
+            });
+
+            // 결과 계산 및 표시
+            for (const day in dailyAssignments) {
+                const assignedWorkers = dailyAssignments[day];
+                const excludedWorkers = dailyExclusions[day];
+                const availableWorkers = new Set(ALL_EMPLOYEES);
+
+                // 배정된 인원과 제외 인원 모두 availableWorkers에서 제거
+                assignedWorkers.forEach(worker => availableWorkers.delete(worker));
+                excludedWorkers.forEach(worker => availableWorkers.delete(worker));
+
+                const resultHtml = `
+                    <div class="result-day">
+                        <h3>${day}</h3>
+                        <p><strong>휴가/교육/민방위:</strong> ${excludedWorkers.size > 0 ? Array.from(excludedWorkers).join(', ') : '없음'}</p>
+                        <p><strong>배정된 인원:</strong> ${assignedWorkers.size > 0 ? Array.from(assignedWorkers).join(', ') : '없음'}</p>
+                        <p><strong>남는 인원 (${availableWorkers.size}명):</strong> ${availableWorkers.size > 0 ? Array.from(availableWorkers).join(', ') : '없음'}</p>
+                    </div>
+                `;
+                resultsDiv.innerHTML += resultHtml;
+            }
+        }
+    </script>
+</body>
+</html>
