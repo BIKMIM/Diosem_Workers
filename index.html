@@ -159,7 +159,7 @@
         <button onclick="analyzeTasks()">인원 현황 확인</button>
         <div id="results"></div>
         <div class="version-info">
-            Version: v2.1
+            Version: v2.2
         </div>
     </div>
 
@@ -189,34 +189,45 @@
             resultsDiv.innerHTML = ''; // 이전 결과 초기화
 
             const lines = inputText.split('\n');
-            let currentDay = '';
+            let currentDay = null; // 현재 처리 중인 요일 (날짜 파싱 전에는 null)
             const dailyAssignedWorkers = {}; // { '6월 9일 월요일': Set<직원명>, ... }
 
+            // 각 줄을 반복하며 파싱
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim(); // 각 줄의 앞뒤 공백 제거
 
-                const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
-                if (dayMatch) {
-                    currentDay = dayMatch[1];
-                    dailyAssignedWorkers[currentDay] = new Set();
+                // 빈 줄은 무시
+                if (line === '') {
+                    continue;
                 }
 
+                // 1. 날짜 라인 확인 (새로운 요일 블록의 시작)
+                const dayMatch = line.match(/^<(\d{1,2}월 \d{1,2}일 [월화수목금토일]요일)>/);
+                if (dayMatch) {
+                    currentDay = dayMatch[1]; // 현재 요일 설정
+                    dailyAssignedWorkers[currentDay] = new Set(); // 해당 요일의 할당된 인원 Set 초기화
+                    continue; // 날짜 라인 처리 완료, 다음 줄로 넘어감
+                }
+
+                // 현재 요일이 설정된 후에만 인원 파싱 로직 실행
                 if (currentDay) {
-                    // 1. '/ ' 뒤에 나오는 작업자 추출
+                    // 2. '/ ' 뒤에 나오는 작업자 추출
                     const workerMatch = line.match(/\/ (.+?)(?:\s*\(현업PO_UR|\s*\(현업PO|\s*\n|$)/);
                     if (workerMatch && workerMatch[1]) {
                         workerMatch[1].split(',').forEach(worker => {
                             dailyAssignedWorkers[currentDay].add(worker.trim());
                         });
+                        continue; // 작업자 라인 처리 완료, 다음 줄로 넘어감
                     }
                     
-                    // 2. '여름휴가:', '교육:', '민방위:', '연차:', '반차:', '병가:' 뒤에 나오는 인원 추출
-                    // 이전에 <날짜> 라인 바로 다음 줄만 보던 것에서, 이제 모든 라인에서 사유 패턴을 찾도록 변경.
+                    // 3. '사유: 인원' 패턴 (예: '여름휴가: 최현철, 노진성')에서 인원 추출
+                    // 이 패턴은 '<날짜>' 바로 뒤에 오든, 다른 작업 라인 사이에 오든 모두 처리
                     const specialCaseMatch = line.match(/^(?:여름휴가|교육|민방위|연차|반차|병가):\s*(.+)/);
                     if (specialCaseMatch && specialCaseMatch[2]) { // 그룹 2에 인원 목록이 있음
                          specialCaseMatch[2].split(',').forEach(worker => {
                             dailyAssignedWorkers[currentDay].add(worker.trim());
                         });
+                        // continue; // 이 라인도 처리 완료, 다음 줄로 넘어감 (선택 사항: 복수 사유 줄이 있을 경우)
                     }
                 }
             }
@@ -227,7 +238,8 @@
                 const getDate = (dayStr) => {
                     const parts = dayStr.match(/(\d{1,2})월 (\d{1,2})일/);
                     if (!parts) return 0;
-                    const currentYear = new Date().getFullYear();
+                    // 현재 연도 (2025년 6월)를 기준으로 날짜 객체 생성 (실제 날짜 파싱에 사용)
+                    const currentYear = new Date().getFullYear(); 
                     return new Date(currentYear, parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
                 };
                 return getDate(a) - getDate(b);
