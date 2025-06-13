@@ -177,7 +177,7 @@
         </div>
         <div id="results"></div>
         <div class="version-info">
-            Version: v3.0
+            Version: v3.1
         </div>
     </div>
 
@@ -250,18 +250,18 @@
                         extractedWorkers = extractedWorkers.concat(specialCaseMatch[2].split(',').map(name => name.trim()));
                     }
                     
-                    // 4. (추가) 그냥 이름만 나열된 경우 (예: '최현철, 노진성')도 포함
-                    // 단, 이는 다른 패턴에 의해 이미 추출되지 않았을 때만 적용되어야 합니다.
-                    // 이 부분은 ALL_EMPLOYEES에 없는 긴 문자열이 잡힐 수 있으므로, ALL_EMPLOYEES에 있는 이름만 거르도록 개선
-                    const genericNameMatch = line.match(/([가-힣]{2,4}(?:,\s*[가-힣]{2,4})*)/); // 한글 이름 2-4자, 쉼표+공백 반복 패턴
-                    if (genericNameMatch && genericNameMatch[1]) {
-                        genericNameMatch[1].split(',').map(name => name.trim()).forEach(name => {
-                            // 전체 직원 목록에 있는 이름만 추가
-                            if (ALL_EMPLOYEES.includes(name) && !extractedWorkers.includes(name)) {
-                                extractedWorkers.push(name);
-                            }
-                        });
-                    }
+                    // 4. (핵심) ALL_EMPLOYEES에 있는 이름이 현재 줄에 포함되어 있다면 강제로 추출
+                    // 이 로직이 가장 포괄적으로 이름을 잡아내도록 합니다.
+                    ALL_EMPLOYEES.forEach(empName => {
+                        // 이름이 현재 줄에 포함되어 있고, 아직 추출된 인원 목록에 없다면 추가
+                        // 단, 너무 짧은 이름(1-2글자)은 다른 단어에 포함될 가능성이 있으므로 주의
+                        // 여기서는 띄어쓰기 또는 쉼표 등으로 구분된 완전한 이름이 포함되었는지 확인
+                        const nameRegex = new RegExp(`\\b${empName}\\b`); // \b는 단어 경계
+                        if (nameRegex.test(line) && !extractedWorkers.includes(empName)) {
+                            extractedWorkers.push(empName);
+                        }
+                    });
+
 
                     // 현재 줄에서 추출된 모든 인원을 dailyAssignedWorkers에 추가 (Set으로 중복 방지)
                     extractedWorkers.forEach(worker => {
