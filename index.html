@@ -54,22 +54,41 @@
             box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
         }
 
-        /* 버튼 */
-        button { 
-            display: block;
-            width: 100%;
+        /* 버튼 그룹 */
+        .button-group {
+            display: flex;
+            gap: 10px; /* 버튼 사이 간격 */
+            margin-bottom: 20px;
+        }
+        .button-group button {
+            width: 100%; /* 각 버튼이 그룹 내에서 100% 너비 차지 */
             padding: 0.75rem 1.25rem; /* 12px 20px */
-            background-color: #3498db;
-            color: white;
-            border: none;
             border-radius: 0.3125rem; /* 5px */
             font-size: 1.1em; /* 부모 글꼴 크기의 1.1배 */
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
-        button:hover {
+
+        /* 메인 액션 버튼 */
+        .primary-button { 
+            background-color: #3498db;
+            color: white;
+            border: none;
+        }
+        .primary-button:hover {
             background-color: #2980b9;
         }
+
+        /* 보조 액션 버튼 (클리어) */
+        .secondary-button {
+            background-color: #e74c3c; /* 빨간색 계열 */
+            color: white;
+            border: none;
+        }
+        .secondary-button:hover {
+            background-color: #c0392b;
+        }
+
 
         /* 결과 표시 영역 - 요일별 섹션 */
         .result-day { 
@@ -141,12 +160,8 @@
             textarea {
                 height: 12.5rem; /* 200px */
             }
-            button {
-                font-size: 1em;
-                padding: 0.625rem 0.9375rem; /* 10px 15px */
-            }
-            .result-day h3 {
-                font-size: 1.2em;
+            .button-group {
+                flex-direction: column; /* 모바일에서 버튼을 세로로 정렬 */
             }
         }
     </style>
@@ -156,10 +171,13 @@
         <h1>주간 작업 현황 분석</h1>
         <p>아래 입력창에 주간 작업 정보를 붙여넣고 '인원 현황 확인' 버튼을 눌러주세요.</p>
         <textarea id="taskInput" placeholder="여기에 작업 정보를 붙여넣으세요. (예: &#60;6월 9일 월요일&#62; 여름휴가: 최현철, 노진성...)"></textarea>
-        <button onclick="analyzeTasks()">인원 현황 확인</button>
+        <div class="button-group">
+            <button class="primary-button" onclick="analyzeTasks()">인원 현황 확인</button>
+            <button class="secondary-button" onclick="clearInputAndResults()">모두 지우기</button>
+        </div>
         <div id="results"></div>
         <div class="version-info">
-            Version: v2.3
+            Version: v2.4
         </div>
     </div>
 
@@ -183,6 +201,12 @@
             return indexA - indexB;
         }
 
+        // 입력 및 결과 초기화 함수
+        function clearInputAndResults() {
+            document.getElementById('taskInput').value = '';
+            document.getElementById('results').innerHTML = '';
+        }
+
         function analyzeTasks() {
             const inputText = document.getElementById('taskInput').value;
             const resultsDiv = document.getElementById('results');
@@ -196,7 +220,7 @@
             for (let i = 0; i < lines.length; i++) {
                 let line = lines[i].trim(); // 각 줄의 앞뒤 공백 제거
 
-                // 빈 줄이거나 주간 요약 줄은 무시 (맨 위 한 줄은 건너뛸 필요 없음, regex로 처리)
+                // 빈 줄이거나 주간 요약 줄은 무시
                 if (line === '' || line.startsWith('▣')) { 
                     continue;
                 }
@@ -208,8 +232,10 @@
                     dailyAssignedWorkers[currentDay] = new Set(); // 해당 요일의 할당된 인원 Set 초기화
                     
                     // 핵심 로직: 날짜 라인 바로 다음 줄에 사유(여름휴가 등)가 있는지 확인하고 처리
+                    // 이 부분을 'for' 루프 내에서 처리하는 것이 중요합니다.
                     if (i + 1 < lines.length) {
                         const nextLine = lines[i + 1].trim();
+                        // 여름휴가, 교육, 민방위, 연차, 반차, 병가 등 모든 사유를 포함
                         const specialCaseMatch = nextLine.match(/^(?:여름휴가|교육|민방위|연차|반차|병가):\s*(.+)/);
                         if (specialCaseMatch && specialCaseMatch[2]) {
                             specialCaseMatch[2].split(',').forEach(worker => {
