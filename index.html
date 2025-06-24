@@ -401,7 +401,7 @@
         const dateLinePattern = /<(\d{1,2}월\s*\d{1,2}일\s*[가-힣]{1}요일)>/;
         
         // 각 부재 유형별 키워드와 이름 목록을 찾는 정규식 패턴들 (global 플래그 제거)
-        const fullAbsenceSubPattern = /(연차|민방위):\s*([가-힣\s,\/]+)/;
+        const fullAbsenceSubPattern = /(연차|민방위|예비군):\s*([가-힣\s,\/]+)/;
         const halfAbsenceSubPattern = /(반차|오전반차|오후반차):\s*([가-힣\s,\/]+)/;
         const educationSubPattern = /(교육):\s*([가-힣\s,\/]+)/;
 
@@ -716,7 +716,7 @@
             
             let absenceText = [];
             if (fullAbsenceNamesForDisplay.length > 0) {
-                absenceText.push(`연차/민방위: ${fullAbsenceNamesForDisplay.join(', ')} (8시간 차감)`);
+                absenceText.push(`연차/민방위/예비군: ${fullAbsenceNamesForDisplay.join(', ')} (8시간 차감)`);
             }
             if (halfAbsenceNamesForDisplay.length > 0) {
                 absenceText.push(`반차/오전반차/오후반차: ${halfAbsenceNamesForDisplay.join(', ')} (4시간 차감)`);
