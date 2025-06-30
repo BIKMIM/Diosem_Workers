@@ -278,7 +278,7 @@
         <div id="results" class="result-section" style="display:none;">
             <h2>요일별 미배정 인원</h2>
             </div>
-        <div class="version">Version: 1.71 주52시간 적용 (신입사원 추가)</div>
+        <div class="version">Version: 1.72 종료시간 우선 적용</div>
     </div>
 
     <div id="overtimeDetailsModal" class="overtime-details-modal">
@@ -290,7 +290,7 @@
     </div>
 
     <script>
-    // 전체 직원 명단 (직급 순서, 20명)
+    // 전체 직원 명단 (직급 순서, 21명)
     const allWorkers = [
         '이상엽', '서한주', '강범일', '최광섭', '조광호', '최현철', '김진탁', '신재웅', '권용덕', '김태영',
         '노진성', '장다빈', '조용준', '신지호', '최이택', '고상원', '박정민', '박경식', '임영곤', '윤호진',
@@ -582,19 +582,14 @@
                             overtimeType = '주말 작업';
                         }
                     } else {
-                        // 평일 작업: (X시간 기준) 또는 18시 이후 종료 기준
-                        const durationMatch = fullWorkContent.match(/\((\d{1,2}시간(?:\d{1,2}분)?) 기준\)/);
+                        // 평일 작업: 종료 시간 기준을 우선적으로 적용
                         const timeRangeMatch = fullWorkContent.match(/(\d{1,2}시(?:\d{1,2}분)?)-(\d{1,2}시(?:\d{1,2}분)?)/);
+                        const durationMatch = fullWorkContent.match(/\((\d{1,2}시간(?:\d{1,2}분)?) 기준\)/);
                         
-                        let durationBasedOvertime = 0;
-                        if (durationMatch) {
-                            const totalDurationMinutes = parseDurationToMinutes(durationMatch[1]);
-                            if (totalDurationMinutes > 8 * 60) { // 8시간 초과시
-                                durationBasedOvertime = totalDurationMinutes - (8 * 60);
-                            }
-                        }
-
                         let endTimeBasedOvertime = 0;
+                        let durationBasedOvertime = 0;
+                        
+                        // 1순위: 종료 시간이 18시 이후인 경우 (종료시간 기준 우선)
                         if (timeRangeMatch) {
                             const endTimeStr = timeRangeMatch[2];
                             const endTimeMinutes = parseTimeToMinutes(endTimeStr);
@@ -605,10 +600,21 @@
                             }
                         }
                         
-                        // 두 기준 중 더 큰 값을 해당 라인의 잔업으로 취함
-                        lineOvertimeMinutes = Math.max(durationBasedOvertime, endTimeBasedOvertime);
-                        if (lineOvertimeMinutes > 0) {
-                            overtimeType = '평일 잔업 시간'; 
+                        // 2순위: (X시간 기준) 표기가 있는 경우 (8시간 초과시만)
+                        if (durationMatch) {
+                            const totalDurationMinutes = parseDurationToMinutes(durationMatch[1]);
+                            if (totalDurationMinutes > 8 * 60) { // 8시간 초과시
+                                durationBasedOvertime = totalDurationMinutes - (8 * 60);
+                            }
+                        }
+                        
+                        // 종료시간 기준이 있으면 우선 적용, 없으면 시간 기준 적용
+                        if (endTimeBasedOvertime > 0) {
+                            lineOvertimeMinutes = endTimeBasedOvertime;
+                            overtimeType = '평일 잔업 (종료시간 기준)';
+                        } else if (durationBasedOvertime > 0) {
+                            lineOvertimeMinutes = durationBasedOvertime;
+                            overtimeType = '평일 잔업 (시간 기준)';
                         }
                     }
 
