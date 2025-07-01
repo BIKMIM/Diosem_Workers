@@ -278,7 +278,7 @@
         <div id="results" class="result-section" style="display:none;">
             <h2>요일별 미배정 인원</h2>
             </div>
-        <div class="version">Version: 1.76 이름 추출을 위한 키워드 및 정규식 개선</div>
+        <div class="version">Version: 1.78 휴가 키워드 추가</div>
     </div>
 
     <div id="overtimeDetailsModal" class="overtime-details-modal">
@@ -421,23 +421,23 @@
 
             // 키워드 다음부터 다른 키워드나 작업이 나올 때까지의 모든 이름을 찾는 방식
             
-            // 연차/민방위/예비군 처리
-            const fullAbsencePattern = /(연차|민방위|예비군):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
+            // 연차/민방위/예비군/휴가 처리 (8시간 차감) - 콜론 앞뒤 공백 허용
+            const fullAbsencePattern = /(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가)\s*:\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
             let match;
             while ((match = fullAbsencePattern.exec(sectionContent)) !== null) {
                 if (fullAbsenceNames) fullAbsenceNames += ', ';
                 fullAbsenceNames += match[2].trim();
             }
             
-            // 반차 처리
-            const halfAbsencePattern = /(반차|오전반차|오후반차):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
+            // 반차 처리 - 콜론 앞뒤 공백 허용
+            const halfAbsencePattern = /(반차|오전반차|오후반차)\s*:\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
             while ((match = halfAbsencePattern.exec(sectionContent)) !== null) {
                 if (halfAbsenceNames) halfAbsenceNames += ', ';
                 halfAbsenceNames += match[2].trim();
             }
             
-            // 교육 처리
-            const educationPattern = /(교육):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
+            // 교육 처리 - 콜론 앞뒤 공백 허용
+            const educationPattern = /(교육)\s*:\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
             while ((match = educationPattern.exec(sectionContent)) !== null) {
                 if (educationNames) educationNames += ', ';
                 educationNames += match[2].trim();
@@ -757,7 +757,7 @@
             
             let absenceText = [];
             if (fullAbsenceNamesForDisplay.length > 0) {
-                absenceText.push(`연차/민방위/예비군: ${fullAbsenceNamesForDisplay.join(', ')} (8시간 차감)`);
+                absenceText.push(`연차/민방위/예비군/휴가: ${fullAbsenceNamesForDisplay.join(', ')} (8시간 차감)`);
             }
             if (halfAbsenceNamesForDisplay.length > 0) {
                 absenceText.push(`반차/오전반차/오후반차: ${halfAbsenceNamesForDisplay.join(', ')} (4시간 차감)`);
@@ -955,7 +955,7 @@
                 // 해당 날짜에 연차/반차/교육 정보가 있다면 표시
                 let absenceDetailTexts = [];
                 if (workerInfo.full.has(date)) {
-                    absenceDetailTexts.push(`연차/민방위/예비군: <span class="overtime-time-negative">-8시간</span>`);
+                    absenceDetailTexts.push(`연차/민방위/예비군/휴가: <span class="overtime-time-negative">-8시간</span>`);
                 }
                 if (workerInfo.half.has(date)) {
                     absenceDetailTexts.push(`반차/오전반차/오후반차: <span class="overtime-time-negative">-4시간</span>`);
