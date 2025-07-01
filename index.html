@@ -278,7 +278,7 @@
         <div id="results" class="result-section" style="display:none;">
             <h2>요일별 미배정 인원</h2>
             </div>
-        <div class="version">Version: 1.72 종료시간 우선 적용</div>
+        <div class="version">Version: 1.76 이름 추출을 위한 키워드 및 정규식 개선</div>
     </div>
 
     <div id="overtimeDetailsModal" class="overtime-details-modal">
@@ -401,10 +401,10 @@
         // --- 날짜 섹션 파싱 (dateSections 전역 변수에 할당) ---
         const dateLinePattern = /<(\d{1,2}월\s*\d{1,2}일\s*[가-힣]{1}요일)>/;
         
-        // 각 부재 유형별 키워드와 이름 목록을 찾는 정규식 패턴들 (global 플래그 제거)
-        const fullAbsenceSubPattern = /(연차|민방위|예비군):\s*([가-힣\s,\/]+)/;
-        const halfAbsenceSubPattern = /(반차|오전반차|오후반차):\s*([가-힣\s,\/]+)/;
-        const educationSubPattern = /(교육):\s*([가-힣\s,\/]+)/;
+        // 각 부재 유형별 키워드와 이름 목록을 찾는 정규식 패턴들 (슬래시 구분도 처리)
+        const fullAbsenceSubPattern = /(연차|민방위|예비군):\s*([가-힣\s,\/]*)/g;
+        const halfAbsenceSubPattern = /(반차|오전반차|오후반차):\s*([가-힣\s,\/]*)/g;
+        const educationSubPattern = /(교육):\s*([가-힣\s,\/]*)/g;
 
 
         const rawDateSections = workInput.split(dateLinePattern); 
@@ -419,15 +419,28 @@
             let halfAbsenceNames = '';
             let educationNames = '';
 
+            // 키워드 다음부터 다른 키워드나 작업이 나올 때까지의 모든 이름을 찾는 방식
+            
+            // 연차/민방위/예비군 처리
+            const fullAbsencePattern = /(연차|민방위|예비군):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
             let match;
-            if ((match = sectionContent.match(fullAbsenceSubPattern)) !== null) {
-                fullAbsenceNames = match[2]; // 이름 그룹이 2번째
+            while ((match = fullAbsencePattern.exec(sectionContent)) !== null) {
+                if (fullAbsenceNames) fullAbsenceNames += ', ';
+                fullAbsenceNames += match[2].trim();
             }
-            if ((match = sectionContent.match(halfAbsenceSubPattern)) !== null) {
-                halfAbsenceNames = match[2]; // 이름 그룹이 2번째
+            
+            // 반차 처리
+            const halfAbsencePattern = /(반차|오전반차|오후반차):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
+            while ((match = halfAbsencePattern.exec(sectionContent)) !== null) {
+                if (halfAbsenceNames) halfAbsenceNames += ', ';
+                halfAbsenceNames += match[2].trim();
             }
-            if ((match = sectionContent.match(educationSubPattern)) !== null) {
-                educationNames = match[2]; // 이름 그룹이 2번째
+            
+            // 교육 처리
+            const educationPattern = /(교육):\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):|■|◆|□|★|<|$)/g;
+            while ((match = educationPattern.exec(sectionContent)) !== null) {
+                if (educationNames) educationNames += ', ';
+                educationNames += match[2].trim();
             }
             
             dateSections.push({
@@ -459,16 +472,30 @@
 
             // 1. 연차/반차/교육 등 인원 처리: 미배정 및 잔업 계산에 영향을 줌
             if (section.fullAbsenceInfo) {
-                const names = section.fullAbsenceInfo.split(/,\s*|\s*\/\s*/).map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''));
-                names.forEach(name => {
+                // 슬래시와 다른 키워드들을 제거하고 이름만 추출
+                const cleanedNames = section.fullAbsenceInfo
+                    .replace(/\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):\s*/g, ', ') // 슬래시 + 키워드를 쉼표로 변환
+                    .replace(/^[,\s]+|[,\s]+$/g, '') // 앞뒤 쉼표/공백 제거
+                    .split(/,\s*|\s*\/\s*/) // 쉼표나 슬래시로 분리
+                    .map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''))
+                    .filter(name => name && !name.match(/^(연차|민방위|예비군|반차|오전반차|오후반차|교육)$/)); // 키워드 제외
+                
+                cleanedNames.forEach(name => {
                     if (allWorkers.includes(name)) {
                         workerAbsenceInfo.get(name).full.add(currentDate);
                     }
                 });
             }
             if (section.halfAbsenceInfo) {
-                const names = section.halfAbsenceInfo.split(/,\s*|\s*\/\s*/).map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''));
-                names.forEach(name => {
+                // 슬래시와 다른 키워드들을 제거하고 이름만 추출
+                const cleanedNames = section.halfAbsenceInfo
+                    .replace(/\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):\s*/g, ', ') // 슬래시 + 키워드를 쉼표로 변환
+                    .replace(/^[,\s]+|[,\s]+$/g, '') // 앞뒤 쉼표/공백 제거
+                    .split(/,\s*|\s*\/\s*/) // 쉼표나 슬래시로 분리
+                    .map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''))
+                    .filter(name => name && !name.match(/^(연차|민방위|예비군|반차|오전반차|오후반차|교육)$/)); // 키워드 제외
+                
+                cleanedNames.forEach(name => {
                     if (allWorkers.includes(name)) {
                         workerAbsenceInfo.get(name).half.add(currentDate);
                     }
@@ -476,8 +503,15 @@
             }
             // 교육 인원은 차감되지 않고 근무하는 것으로 간주
             if (section.educationInfo) {
-                const names = section.educationInfo.split(/,\s*|\s*\/\s*/).map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''));
-                names.forEach(name => {
+                // 슬래시와 다른 키워드들을 제거하고 이름만 추출
+                const cleanedNames = section.educationInfo
+                    .replace(/\s*\/\s*(연차|민방위|예비군|반차|오전반차|오후반차|교육):\s*/g, ', ') // 슬래시 + 키워드를 쉼표로 변환
+                    .replace(/^[,\s]+|[,\s]+$/g, '') // 앞뒤 쉼표/공백 제거
+                    .split(/,\s*|\s*\/\s*/) // 쉼표나 슬래시로 분리
+                    .map(name => name.trim().replace(/(프로|기정|차장|TL|부장님|팀장)$/, ''))
+                    .filter(name => name && !name.match(/^(연차|민방위|예비군|반차|오전반차|오후반차|교육)$/)); // 키워드 제외
+                
+                cleanedNames.forEach(name => {
                     if (allWorkers.includes(name)) {
                         workerAbsenceInfo.get(name).education.add(currentDate);
                     }
