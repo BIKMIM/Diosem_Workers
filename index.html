@@ -430,14 +430,14 @@
             }
             
             // 반차 처리 - 콜론 앞뒤 공백 허용
-            const halfAbsencePattern = /(반차|오전반차|오후반차)\s*:\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
+            const halfAbsencePattern = /(반차|오전반차|오후반차)\s*:\s*([^■◆□★※<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
             while ((match = halfAbsencePattern.exec(sectionContent)) !== null) {
                 if (halfAbsenceNames) halfAbsenceNames += ', ';
                 halfAbsenceNames += match[2].trim();
             }
             
             // 교육 처리 - 콜론 앞뒤 공백 허용
-            const educationPattern = /(교육)\s*:\s*([^■◆□★<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
+            const educationPattern = /(교육)\s*:\s*([^■◆□★※<]*?)(?=\s*\/\s*(연차|민방위|예비군|여름휴가|여름\s*휴가|겨울휴가|겨울\s*휴가|휴가|반차|오전반차|오후반차|교육)\s*:|■|◆|□|★|<|$)/g;
             while ((match = educationPattern.exec(sectionContent)) !== null) {
                 if (educationNames) educationNames += ', ';
                 educationNames += match[2].trim();
@@ -524,7 +524,7 @@
 
             lines.forEach((line, index) => {
                 // ■, ◆, □, ★ 등 다양한 기호로 시작하는 작업 라인 처리
-                if (line.trim().match(/^[■◆□★]/)) {
+                if (line.trim().match(/^[■◆□★※]/)) {
                     const lineAssignedWorkers = new Set(); // 현재 작업 라인에 포함된 (연차/반차 제외) 직원들
                     const namesToProcessInLine = new Set(); // 이 라인에서 추출된 중복 제거된 이름들
 
@@ -537,7 +537,7 @@
                         const nextLine = lines[nextLineIndex].trim();
                         
                         // 다음 작업(■, ◆, □, ★로 시작) 또는 날짜 섹션을 만나면 중단
-                        if (nextLine.match(/^[■◆□★]/) || nextLine.match(/^<\d{1,2}월\s*\d{1,2}일/)) {
+                        if (nextLine.match(/^[■◆□★※]/) || nextLine.match(/^<\d{1,2}월\s*\d{1,2}일/)) {
                             break;
                         }
                         
