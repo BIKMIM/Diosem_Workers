@@ -615,43 +615,50 @@
                             lineOvertimeMinutes = 5 * 60; // 기본 5시간
                             overtimeType = '주말 작업';
                         }
-                    } else {
-                        // 평일 작업: 종료 시간 기준을 우선적으로 적용
-                        const timeRangeMatch = fullWorkContent.match(/(\d{1,2}시(?:\d{1,2}분)?)-(\d{1,2}시(?:\d{1,2}분)?)/);
-                        const durationMatch = fullWorkContent.match(/\((\d{1,2}시간(?:\d{1,2}분)?) 기준\)/);
-                        
-                        let endTimeBasedOvertime = 0;
-                        let durationBasedOvertime = 0;
-                        
-                        // 1순위: 종료 시간이 18시 이후인 경우 (종료시간 기준 우선)
-                        if (timeRangeMatch) {
-                            const endTimeStr = timeRangeMatch[2];
-                            const endTimeMinutes = parseTimeToMinutes(endTimeStr);
-                            const workingDayEndMinutes = 18 * 60; // 18시 (오후 6시)
+                   } else {
+               // 평일 작업: 종료 시간 기준을 우선적으로 적용
+               const timeRangeMatch = fullWorkContent.match(/(\d{1,2}시(?:\d{1,2}분)?)-(\d{1,2}시(?:\d{1,2}분)?)/);
+               const durationMatch = fullWorkContent.match(/\((\d{1,2}시간(?:\d{1,2}분)?) 기준\)/);
+               
+               let endTimeBasedOvertime = 0;
+               let durationBasedOvertime = 0;
+               let ignoreDurationMatch = false; // [추가됨] 텍스트 시간 기준 무시 플래그
 
-                            if (endTimeMinutes && endTimeMinutes > workingDayEndMinutes) {
-                                endTimeBasedOvertime = endTimeMinutes - workingDayEndMinutes;
-                            }
-                        }
-                        
-                        // 2순위: (X시간 기준) 표기가 있는 경우 (8시간 초과시만)
-                        if (durationMatch) {
-                            const totalDurationMinutes = parseDurationToMinutes(durationMatch[1]);
-                            if (totalDurationMinutes > 8 * 60) { // 8시간 초과시
-                                durationBasedOvertime = totalDurationMinutes - (8 * 60);
-                            }
-                        }
-                        
-                        // 종료시간 기준이 있으면 우선 적용, 없으면 시간 기준 적용
-                        if (endTimeBasedOvertime > 0) {
-                            lineOvertimeMinutes = endTimeBasedOvertime;
-                            overtimeType = '평일 잔업 (종료시간 기준)';
-                        } else if (durationBasedOvertime > 0) {
-                            lineOvertimeMinutes = durationBasedOvertime;
-                            overtimeType = '평일 잔업 (시간 기준)';
-                        }
-                    }
+               // 1순위: 종료 시간이 18시 이후인 경우 (종료시간 기준 우선)
+               if (timeRangeMatch) {
+                   const endTimeStr = timeRangeMatch[2];
+                   const endTimeMinutes = parseTimeToMinutes(endTimeStr);
+                   const workingDayEndMinutes = 18 * 60; // 18시 (오후 6시)
 
+                   if (endTimeMinutes) {
+                       if (endTimeMinutes > workingDayEndMinutes) {
+                           endTimeBasedOvertime = endTimeMinutes - workingDayEndMinutes;
+                       } else {
+                           // [수정된 로직] 종료 시간이 18시 이하인 경우(예: 15시 종료), 
+                           // 텍스트로 "(10시간 기준)"이라고 적혀 있어도 오타로 간주하고 무시합니다.
+                           ignoreDurationMatch = true;
+                       }
+                   }
+               }
+               
+               // 2순위: (X시간 기준) 표기가 있는 경우 (8시간 초과시만)
+               // [수정된 로직] ignoreDurationMatch가 false일 때만 계산
+               if (durationMatch && !ignoreDurationMatch) {
+                   const totalDurationMinutes = parseDurationToMinutes(durationMatch[1]);
+                   if (totalDurationMinutes > 8 * 60) { // 8시간 초과시
+                       durationBasedOvertime = totalDurationMinutes - (8 * 60);
+                   }
+               }
+               
+               // 종료시간 기준이 있으면 우선 적용, 없으면 시간 기준 적용
+               if (endTimeBasedOvertime > 0) {
+                   lineOvertimeMinutes = endTimeBasedOvertime;
+                   overtimeType = '평일 잔업 (종료시간 기준)';
+               } else if (durationBasedOvertime > 0) {
+                   lineOvertimeMinutes = durationBasedOvertime;
+                   overtimeType = '평일 잔업 (시간 기준)';
+               }
+           }
                     // 이 라인에서 발생한 잔업 시간을 tempDailyOvertimeForWorkers에 기록
                     if (lineOvertimeMinutes > 0) {
                         lineAssignedWorkers.forEach(worker => {
